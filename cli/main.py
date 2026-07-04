@@ -3,7 +3,7 @@ import os
 import click
 import requests
 
-DEFAULT_API_URL = "http://127.0.0.1:5000"
+DEFAULT_API_URL = "http://127.0.0.1:5000"  # override with INVENTORY_API_URL env var
 
 
 def _api_url():
@@ -11,13 +11,14 @@ def _api_url():
 
 
 def _request(method, path, **kwargs):
-    url = f"{_api_url()}{path}"
+    url = _api_url() + path
     try:
         response = requests.request(method, url, timeout=10, **kwargs)
     except requests.RequestException as exc:
         raise click.ClickException(f"could not reach API at {url}: {exc}")
 
     if response.status_code >= 400:
+        # api usually sends {"error": "..."} but fall back to raw text just in case
         try:
             message = response.json().get("error", response.text)
         except ValueError:
@@ -83,21 +84,17 @@ def add_item(product_name, brand, barcode, category, price, quantity, ingredient
 @click.option("--quantity", type=int)
 @click.option("--ingredients", "ingredients_text")
 def update_item(item_id, product_name, brand, barcode, category, price, quantity, ingredients_text):
-    payload = {}
-    if product_name is not None:
-        payload["product_name"] = product_name
-    if brand is not None:
-        payload["brand"] = brand
-    if barcode is not None:
-        payload["barcode"] = barcode
-    if category is not None:
-        payload["category"] = category
-    if price is not None:
-        payload["price"] = price
-    if quantity is not None:
-        payload["quantity"] = quantity
-    if ingredients_text is not None:
-        payload["ingredients_text"] = ingredients_text
+    # only send fields the user actually passed, rest stays untouched on the server
+    fields = {
+        "product_name": product_name,
+        "brand": brand,
+        "barcode": barcode,
+        "category": category,
+        "price": price,
+        "quantity": quantity,
+        "ingredients_text": ingredients_text,
+    }
+    payload = {k: v for k, v in fields.items() if v is not None}
 
     if not payload:
         raise click.ClickException("provide at least one field to update")
