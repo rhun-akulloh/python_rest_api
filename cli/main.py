@@ -83,21 +83,25 @@ def add_item(product_name, brand, barcode, category, price, quantity, ingredient
 @click.option("--quantity", type=int)
 @click.option("--ingredients", "ingredients_text")
 def update_item(item_id, product_name, brand, barcode, category, price, quantity, ingredients_text):
-    payload = {
-        k: v
-        for k, v in {
-            "product_name": product_name,
-            "brand": brand,
-            "barcode": barcode,
-            "category": category,
-            "price": price,
-            "quantity": quantity,
-            "ingredients_text": ingredients_text,
-        }.items()
-        if v is not None
-    }
+    payload = {}
+    if product_name is not None:
+        payload["product_name"] = product_name
+    if brand is not None:
+        payload["brand"] = brand
+    if barcode is not None:
+        payload["barcode"] = barcode
+    if category is not None:
+        payload["category"] = category
+    if price is not None:
+        payload["price"] = price
+    if quantity is not None:
+        payload["quantity"] = quantity
+    if ingredients_text is not None:
+        payload["ingredients_text"] = ingredients_text
+
     if not payload:
         raise click.ClickException("provide at least one field to update")
+
     item = _request("PATCH", f"/inventory/{item_id}", json=payload).json()
     click.echo(f"Updated item {item['id']}")
 

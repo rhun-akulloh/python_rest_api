@@ -6,12 +6,6 @@ from app.models import store
 inventory_bp = Blueprint("inventory", __name__)
 
 
-def _lookup_external(barcode, name):
-    if barcode:
-        return fetch_by_barcode(barcode)
-    return search_by_name(name)
-
-
 @inventory_bp.get("/inventory")
 def list_items():
     return jsonify(store.all())
@@ -28,27 +22,31 @@ def get_item(item_id):
 @inventory_bp.post("/inventory")
 def create_item():
     data = request.get_json(silent=True)
-    if not data or not data.get("product_name"):
+    if not data:
+        return jsonify({"error": "request body is required"}), 400
+    if not data.get("product_name"):
         return jsonify({"error": "product_name is required"}), 400
+
     item = store.create(data)
     return jsonify(item), 201
 
 
 @inventory_bp.patch("/inventory/<int:item_id>")
 def update_item(item_id):
+    item = store.get(item_id)
+    if item is None:
+        return jsonify({"error": "item not found"}), 404
+
     data = request.get_json(silent=True)
     if not data:
         return jsonify({"error": "request body is required"}), 400
-    item = store.update(item_id, data)
-    if item is None:
-        return jsonify({"error": "item not found"}), 404
-    return jsonify(item)
+
+    return jsonify(store.update(item_id, data))
 
 
 @inventory_bp.delete("/inventory/<int:item_id>")
 def delete_item(item_id):
-    deleted = store.delete(item_id)
-    if not deleted:
+    if not store.delete(item_id):
         return jsonify({"error": "item not found"}), 404
     return "", 204
 
@@ -61,11 +59,14 @@ def lookup_external():
         return jsonify({"error": "barcode or name query param is required"}), 400
 
     try:
-        product = _lookup_external(barcode, name)
+        if barcode:
+            product = fetch_by_barcode(barcode)
+        else:
+            product = search_by_name(name)
     except ExternalAPIError as exc:
         return jsonify({"error": str(exc)}), 502
 
-    if product is None:
+    if not product:
         return jsonify({"error": "product not found"}), 404
     return jsonify(product)
 
@@ -79,13 +80,15 @@ def import_external():
         return jsonify({"error": "barcode or name is required"}), 400
 
     try:
-        product = _lookup_external(barcode, name)
+        product = fetch_by_barcode(barcode) if barcode else search_by_name(name)
     except ExternalAPIError as exc:
         return jsonify({"error": str(exc)}), 502
 
-    if product is None:
+    if not product:
         return jsonify({"error": "product not found"}), 404
 
-    product.update({"price": data.get("price", 0), "quantity": data.get("quantity", 0)})
+    # keep whatever OpenFoodFacts gave us, just tack on the shop-specific fields
+    product["price"] = data.get("price", 0)
+    product["quantity"] = data.get("quantity", 0)
     item = store.create(product)
     return jsonify(item), 201

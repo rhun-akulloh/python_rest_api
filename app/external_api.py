@@ -34,7 +34,6 @@ def fetch_by_barcode(barcode):
 
 
 def search_by_name(name):
-    url = f"{BASE_URL}/cgi/search.pl"
     params = {
         "search_terms": name,
         "search_simple": 1,
@@ -42,14 +41,12 @@ def search_by_name(name):
         "json": 1,
         "page_size": 1,
     }
+
     try:
-        response = requests.get(url, params=params, headers=HEADERS, timeout=TIMEOUT)
+        response = requests.get(f"{BASE_URL}/cgi/search.pl", params=params, headers=HEADERS, timeout=TIMEOUT)
         response.raise_for_status()
     except requests.RequestException as exc:
-        raise ExternalAPIError(f"failed to reach OpenFoodFacts: {exc}") from exc
+        raise ExternalAPIError(f"OpenFoodFacts search failed: {exc}") from exc
 
-    data = response.json()
-    products = data.get("products") or []
-    if not products:
-        return None
-    return _normalize(products[0])
+    products = response.json().get("products") or []
+    return _normalize(products[0]) if products else None

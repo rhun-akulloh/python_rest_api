@@ -20,13 +20,18 @@ Runs at http://127.0.0.1:5000
 
 ## API endpoints
 
+Basic CRUD on `/inventory`:
+
 - `GET /inventory` - list all items
 - `GET /inventory/<id>` - get one item
 - `POST /inventory` - create an item (requires `product_name`)
 - `PATCH /inventory/<id>` - update an item
 - `DELETE /inventory/<id>` - delete an item
-- `GET /inventory/lookup?barcode=<code>` or `?name=<name>` - look up a product on OpenFoodFacts
-- `POST /inventory/import` - look up a product on OpenFoodFacts and add it to inventory (body: `barcode` or `name`, plus optional `price` and `quantity`)
+
+There are also a couple of endpoints that hit OpenFoodFacts directly:
+
+- `GET /inventory/lookup?barcode=<code>` (or `?name=<name>`) looks up a product without saving it.
+- `POST /inventory/import` does the same lookup and adds the result to inventory. Body needs `barcode` or `name`, and you can pass `price`/`quantity` too since OpenFoodFacts obviously doesn't know those.
 
 ## CLI
 
