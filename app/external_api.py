@@ -1,16 +1,12 @@
 import requests
 
 BASE_URL = "https://world.openfoodfacts.org"
-TIMEOUT = 10  # openfoodfacts can be slow, bumped this up from 5 after seeing timeouts locally
-HEADERS = {'User-Agent': 'InventoryManagementSystem/1.0 (contact: adnanobuya@gmail.com)'}
+TIMEOUT = 10
 
 
-class ExternalAPIError(Exception):
-    pass
 
-
-def _normalize(product):
-    # off gives back a LOT more fields than we care about, just pulling what we need
+def normalize(product):
+    # format the data that external API returns to match our internal inventory items
     out = {}
     out["product_name"] = product.get("product_name") or None
     out["brand"] = product.get("brands") or None
@@ -22,17 +18,16 @@ def _normalize(product):
 
 def fetch_by_barcode(barcode):
     url = BASE_URL + "/api/v2/product/" + str(barcode) + ".json"
-    try:
-        response = requests.get(url, headers=HEADERS, timeout=TIMEOUT)
-        response.raise_for_status()
-    except requests.RequestException as exc:
-        raise ExternalAPIError("failed to reach OpenFoodFacts: %s" % exc) from exc
-
-    data = response.json()
-    if data.get("status") != 1:
-        # status 0 just means not found, not really an error
+    
+    response = requests.get(url, timeout=TIMEOUT)
+    if response.status_code != 200:
         return None
-    return _normalize(data["product"])
+    else:
+        data = response.json()
+        product = data.get("product")
+        if not product:
+            return None
+        return normalize(product)
 
 
 def search_by_name(name):
@@ -43,14 +38,15 @@ def search_by_name(name):
         "json": 1,
         "page_size": 1,
     }
+    finalUrl= f"{BASE_URL}/cgi/search.pl"
 
-    try:
-        resp = requests.get(f"{BASE_URL}/cgi/search.pl", params=params, headers=HEADERS, timeout=TIMEOUT)
-        resp.raise_for_status()
-    except requests.RequestException as exc:
-        raise ExternalAPIError(f"OpenFoodFacts search failed: {exc}") from exc
-
-    products = resp.json().get("products") or []
-    if not products:
+    response = requests.get(finalUrl, params=params, timeout=TIMEOUT)
+    if response.status_code != 200:
         return None
-    return _normalize(products[0])
+    else:
+        data = response.json()
+        products = data.get("products")
+        if not products:
+            return None
+        product = products[0]
+        return normalize(product)
