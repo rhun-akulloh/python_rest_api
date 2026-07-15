@@ -2,6 +2,7 @@ import requests
 
 BASE_URL = "https://world.openfoodfacts.org"
 TIMEOUT = 10
+HEADERS = {"User-Agent": "InventoryApp/1.0 (adnanobuya@gmail.com)"}
 
 
 
@@ -19,7 +20,7 @@ def normalize(product):
 def fetch_by_barcode(barcode):
     url = BASE_URL + "/api/v2/product/" + str(barcode) + ".json"
     
-    response = requests.get(url, timeout=TIMEOUT)
+    response = requests.get(url, timeout=TIMEOUT, headers=HEADERS)
     if response.status_code != 200:
         return None
     else:
@@ -40,7 +41,7 @@ def search_by_name(name):
     }
     finalUrl= f"{BASE_URL}/cgi/search.pl"
 
-    response = requests.get(finalUrl, params=params, timeout=TIMEOUT)
+    response = requests.get(finalUrl, params=params, timeout=TIMEOUT, headers=HEADERS)
     if response.status_code != 200:
         return None
     else:
